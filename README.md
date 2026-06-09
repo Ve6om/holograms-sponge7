@@ -3,6 +3,8 @@
 A fork of [RandomByte's Holograms](https://github.com/randombyte-developer/holograms) Sponge plugin (SpongeAPI 7,
 Minecraft 1.12.2), adding a file-based workflow and a browser editor for building multi-line text holograms.
 
+**▶ Open the editor: https://ve6om.github.io/holograms-sponge7/**
+
 ## What this fork adds
 
 - **File-based panels.** Design a multi-line hologram once, save it as a `.txt` file, and spawn the whole thing
@@ -35,8 +37,9 @@ trimmed). See [`panels/welcome-example.txt`](panels/welcome-example.txt) for a s
 
 ## The editor
 
-[`index.html`](index.html) is a single, self-contained, offline page — no build step, no server. Open it in a
-browser (or host it; see below) to:
+[`index.html`](index.html) is a single, self-contained, offline page — no build step, no server. It is published
+with GitHub Pages at **https://ve6om.github.io/holograms-sponge7/**, or you can open the file directly in a
+browser. Use it to:
 
 - Build a panel line by line with a live Minecraft-style preview.
 - Click colour/format swatches to insert `&` codes at the cursor.
