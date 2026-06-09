@@ -2,7 +2,10 @@ package de.randombyte.holograms
 
 import com.google.inject.Inject
 import de.randombyte.holograms.api.HologramsService
+import de.randombyte.holograms.commands.CreateHologramFromFileCommand
+import de.randombyte.holograms.commands.ExportPanelCommand
 import de.randombyte.holograms.commands.ListNearbyHologramsCommand
+import de.randombyte.holograms.commands.RemovePanelCommand
 import de.randombyte.holograms.commands.SetNearestHologramText
 import de.randombyte.holograms.commands.SpawnMultiLineTextHologramCommand
 import de.randombyte.holograms.commands.SpawnTextHologramCommand
@@ -41,6 +44,7 @@ class Holograms @Inject constructor(
     }
 
     val inputFile: Path = configPath.resolve("input.txt")
+    val panelsDir: Path = configPath.resolve("panels")
 
     @Listener
     fun onPreInit(event: GamePreInitializationEvent) {
@@ -61,6 +65,7 @@ class Holograms @Inject constructor(
     @Listener
     fun onInit(event: GameInitializationEvent) {
         inputFile.safelyCreateFile()
+        Files.createDirectories(panelsDir)
 
         Sponge.getCommandManager().register(this, CommandSpec.builder()
                 .permission("holograms.list")
@@ -82,6 +87,27 @@ class Holograms @Inject constructor(
                         ))
                         .executor(SpawnMultiLineTextHologramCommand())
                         .build(), "createMultiLine", "cml")
+                .child(CommandSpec.builder()
+                        .permission("holograms.createFromFile")
+                        .arguments(seq(
+                                string("name".toText()),
+                                optional(doubleNum("verticalSpace".toText()))
+                        ))
+                        .executor(CreateHologramFromFileCommand(this))
+                        .build(), "createFromFile", "cff")
+                .child(CommandSpec.builder()
+                        .permission("holograms.removePanel")
+                        .arguments(string("name".toText()))
+                        .executor(RemovePanelCommand())
+                        .build(), "removePanel", "rp")
+                .child(CommandSpec.builder()
+                        .permission("holograms.export")
+                        .arguments(seq(
+                                string("name".toText()),
+                                optional(doubleNum("radius".toText()))
+                        ))
+                        .executor(ExportPanelCommand(this))
+                        .build(), "export")
                 .child(CommandSpec.builder()
                         .permission("holograms.list")
                         .arguments(optional(integer("maxDistance".toText())))

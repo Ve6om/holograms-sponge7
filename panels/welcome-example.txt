@@ -1,0 +1,10 @@
+# Hologram panel: welcome-example
+# space: 0.25
+# Example panel. Open index.html (the editor) to design your own, then export a file like this.
+# Top/bottom "&a&m...&r" lines are strikethrough divider bars.
+# Spawn this in-game with:  /holograms createFromFile welcome-example
+&a&m                              &r
+&a&lWelcome to the Server!
+&a» Enjoy your stay and have fun.
+&a» Type /help for a list of commands.
+&a&m                              &r

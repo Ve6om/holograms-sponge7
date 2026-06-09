@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hologram Panel Editor</title>
+<style>
+  :root {
+    --bg: #1e1f22;
+    --panel: #2b2d31;
+    --panel2: #232428;
+    --border: #3a3c42;
+    --text: #dbdee1;
+    --muted: #9097a0;
+    --accent: #5865f2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+  h1 { font-size: 16px; margin: 0 0 2px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 18px 0 8px; }
+  .sidebar {
+    width: 340px;
+    min-width: 340px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 16px;
+    overflow-y: auto;
+  }
+  .stage {
+    flex: 1;
+    position: relative;
+    overflow: auto;
+    background: #111 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="8" height="8" fill="%23161616"/><rect x="8" y="8" width="8" height="8" fill="%23161616"/></svg>');
+  }
+  #bgImg {
+    position: absolute;
+    top: 0; left: 0;
+    max-width: none;
+    pointer-events: none;
+    user-select: none;
+  }
+  #previewStack {
+    position: absolute;
+    display: inline-block;
+    text-align: center;
+    white-space: nowrap;
+    padding: 4px 10px;
+    cursor: move;
+  }
+  .mcline {
+    font-family: "Minecraft", "Consolas", monospace;
+    font-size: 18px;
+    line-height: 1.45;
+    text-shadow: 2px 2px 0 rgba(0,0,0,.55);
+    white-space: pre;
+  }
+  .mcline:empty::after { content: "\200b"; }
+
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  input[type=text], input[type=number], select {
+    width: 100%;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 9px;
+    border-radius: 5px;
+    font-size: 13px;
+    font-family: "Consolas", monospace;
+  }
+  input[type=range] { width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row > * { flex: 1; }
+
+  button {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button.small { padding: 3px 7px; font-size: 12px; }
+
+  .swatches { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+  .swatch {
+    aspect-ratio: 1;
+    border: 1px solid #00000055;
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+  }
+  .swatch:hover { outline: 2px solid var(--accent); }
+  .fmt { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .fmt button { flex: 0 0 auto; min-width: 34px; }
+
+  .lines { display: flex; flex-direction: column; gap: 6px; }
+  .lineRow { display: flex; gap: 4px; align-items: center; }
+  .lineRow input { flex: 1; }
+  .lineRow .handle { color: var(--muted); cursor: default; font-size: 12px; width: 18px; text-align: center; }
+
+  textarea {
+    width: 100%;
+    height: 120px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 5px;
+    font-family: "Consolas", monospace;
+    font-size: 12px;
+    padding: 8px;
+    resize: vertical;
+  }
+  .hint { font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .toolbar { position: sticky; top: 0; background: var(--panel); padding-bottom: 10px; z-index: 5; }
+  .spacer { height: 8px; }
+  code { background: var(--panel2); padding: 1px 4px; border-radius: 3px; font-size: 11px; }
+</style>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="toolbar">
+      <h1>Hologram Panel Editor</h1>
+      <div class="hint">Build a multi-line panel, match it against a screenshot, export a <code>.txt</code> for <code>/holograms createFromFile</code>.</div>
+    </div>
+
+    <h2>Panel</h2>
+    <label>Panel name (export filename)</label>
+    <input type="text" id="panelName" value="useful-commands">
+    <div class="spacer"></div>
+    <div class="row">
+      <div>
+        <label>Vertical space</label>
+        <input type="number" id="verticalSpace" value="0.25" step="0.01" min="0">
+      </div>
+      <div>
+        <label>Preview font px</label>
+        <input type="number" id="fontPx" value="18" step="1" min="6">
+      </div>
+    </div>
+
+    <h2>Formatting palette</h2>
+    <div class="hint">Click a color/format to insert its code at the cursor of the focused line.</div>
+    <div class="spacer"></div>
+    <div class="swatches" id="swatches"></div>
+    <div class="fmt" id="formats"></div>
+
+    <h2>Lines</h2>
+    <div class="lines" id="lines"></div>
+    <div class="spacer"></div>
+    <div class="row">
+      <button class="small" id="addLine">+ Add line</button>
+      <button class="small" id="clearLines">Clear</button>
+    </div>
+    <div class="spacer"></div>
+    <label>Divider bar <span class="hint" style="display:inline">— click a divider line to edit it live</span></label>
+    <div class="row">
+      <select id="dividerColor" title="Bar color"></select>
+      <select id="dividerStyle" title="Bar style">
+        <option value="m">─ strikethrough</option>
+        <option value="n">_ underline</option>
+      </select>
+    </div>
+    <div class="spacer"></div>
+    <div class="row" style="align-items:center">
+      <input type="range" id="dividerLen" min="1" max="80" value="24" style="flex:5">
+      <span id="dividerLenLabel" style="flex:0 0 26px; text-align:right; font-family:Consolas,monospace; font-size:12px">24</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="row">
+      <button class="small" id="insertDivider">+ Divider</button>
+      <button class="small" id="addSpacer" title="Insert a blank spacer line (&r &r)">+ Spacer</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="small" id="centerLines" style="width:100%" title="Pad lines with leading spaces to visually center the block (approximate)">Center all lines (approx)</button>
+
+    <h2>Reference screenshot</h2>
+    <input type="file" id="bgFile" accept="image/*">
+    <div class="spacer"></div>
+    <button class="small" id="eyedropper" style="width:100%">🎯 Eyedropper: off</button>
+    <div class="hint">When on, click a pixel on the screenshot to insert the nearest Minecraft color code into the focused line.</div>
+    <div class="spacer"></div>
+    <label>Background opacity</label>
+    <input type="range" id="bgOpacity" min="0" max="100" value="100">
+    <label>Background scale</label>
+    <input type="range" id="bgScale" min="20" max="200" value="100">
+
+    <h2>Import / Export</h2>
+    <label>Paste &-code lines to import</label>
+    <textarea id="importBox" placeholder="&6&lUseful Commands&#10;&b/rtp &7- Randomly teleport..."></textarea>
+    <div class="row">
+      <button class="small" id="importBtn">Load into editor</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="primary" id="exportBtn" style="width:100%">⬇ Download panel .txt</button>
+    <div class="spacer"></div>
+    <div class="hint">Drop the file in <code>config/holograms/panels/</code> on the server, then run<br><code>/holograms createFromFile &lt;name&gt;</code></div>
+    <div class="spacer"></div>
+    <label>Exported file preview</label>
+    <textarea id="exportPreview" readonly style="height:90px"></textarea>
+  </div>
+
+  <div class="stage" id="stage">
+    <img id="bgImg" style="display:none">
+    <div id="previewStack"></div>
+  </div>
+
+<script>
+const COLORS = {
+  '0':['black','#000000'], '1':['dark_blue','#0000AA'], '2':['dark_green','#00AA00'],
+  '3':['dark_aqua','#00AAAA'], '4':['dark_red','#AA0000'], '5':['dark_purple','#AA00AA'],
+  '6':['gold','#FFAA00'], '7':['gray','#AAAAAA'], '8':['dark_gray','#555555'],
+  '9':['blue','#5555FF'], 'a':['green','#55FF55'], 'b':['aqua','#55FFFF'],
+  'c':['red','#FF5555'], 'd':['light_purple','#FF55FF'], 'e':['yellow','#FFFF55'],
+  'f':['white','#FFFFFF']
+};
+const FORMATS = {
+  'l':'Bold', 'o':'Italic', 'n':'Underline', 'm':'Strike', 'k':'Magic', 'r':'Reset'
+};
+
+let lastFocused = null; // the line input that last had focus
+
+// ---- build palette ----
+const swatchWrap = document.getElementById('swatches');
+for (const [code, [name, hex]] of Object.entries(COLORS)) {
+  const d = document.createElement('div');
+  d.className = 'swatch';
+  d.style.background = hex;
+  d.title = `&${code}  ${name}`;
+  d.onclick = () => insertCode('&' + code);
+  swatchWrap.appendChild(d);
+}
+const fmtWrap = document.getElementById('formats');
+for (const [code, label] of Object.entries(FORMATS)) {
+  const b = document.createElement('button');
+  b.className = 'small';
+  b.textContent = label;
+  b.title = '&' + code;
+  b.onclick = () => insertCode('&' + code);
+  fmtWrap.appendChild(b);
+}
+
+function insertCode(code) {
+  const input = lastFocused;
+  if (!input) { alert('Click into a line first, then pick a code.'); return; }
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? input.value.length;
+  input.value = input.value.slice(0, start) + code + input.value.slice(end);
+  const caret = start + code.length;
+  input.setSelectionRange(caret, caret);
+  input.focus();
+  render();
+}
+
+// ---- lines ----
+const linesWrap = document.getElementById('lines');
+
+function makeLine(value = '') {
+  const row = document.createElement('div');
+  row.className = 'lineRow';
+
+  const handle = document.createElement('span');
+  handle.className = 'handle';
+  handle.textContent = '⋮⋮';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = value;
+  input.placeholder = '&7empty line';
+  input.addEventListener('focus', () => { lastFocused = input; syncDividerControlsToLine(input); });
+  input.addEventListener('input', render);
+
+  const up = mkBtn('▲', () => { const p = row.previousElementSibling; if (p) linesWrap.insertBefore(row, p); render(); });
+  const down = mkBtn('▼', () => { const n = row.nextElementSibling; if (n) linesWrap.insertBefore(n, row); render(); });
+  const del = mkBtn('✕', () => { row.remove(); render(); });
+
+  row.append(handle, input, up, down, del);
+  linesWrap.appendChild(row);
+  return input;
+}
+function mkBtn(txt, fn) {
+  const b = document.createElement('button');
+  b.className = 'small';
+  b.textContent = txt;
+  b.onclick = fn;
+  return b;
+}
+function getLineInputs() {
+  return [...linesWrap.querySelectorAll('input')];
+}
+
+document.getElementById('addLine').onclick = () => { makeLine(''); render(); };
+document.getElementById('clearLines').onclick = () => { linesWrap.innerHTML = ''; render(); };
+
+// ---- divider bars (no manual space-typing) ----
+// A divider is "&<color>&<style>" + spaces + "&r". The trailing &r keeps the spaces
+// interior so they survive saving/editing (pure trailing spaces get trimmed).
+function buildDivider(len, color, style) { return `&${color}&${style}` + ' '.repeat(Math.max(1, len)) + '&r'; }
+function dividerInfo(v) {
+  const m = v.match(/^((?:&[0-9a-fk-or])+)( +)(&r)?$/i);
+  if (!m) return null;
+  const style = (m[1].match(/&([mn])/i) || [])[1];
+  if (!style) return null; // must be strikethrough or underline to count as a bar
+  const color = (m[1].match(/&([0-9a-f])/i) || [null, '7'])[1];
+  return { color: color.toLowerCase(), style: style.toLowerCase(), len: m[2].length };
+}
+
+const dividerColor = document.getElementById('dividerColor');
+const dividerStyle = document.getElementById('dividerStyle');
+const dividerLen = document.getElementById('dividerLen');
+const dividerLenLabel = document.getElementById('dividerLenLabel');
+let editingDivider = null; // the divider line the controls are currently bound to
+
+for (const [code, [name]] of Object.entries(COLORS)) {
+  const o = document.createElement('option');
+  o.value = code; o.textContent = `&${code} ${name}`;
+  dividerColor.appendChild(o);
+}
+dividerColor.value = '7';
+
+function currentDividerString() { return buildDivider(parseInt(dividerLen.value) || 1, dividerColor.value, dividerStyle.value); }
+
+// When a divider line is focused, mirror its settings into the controls so the
+// slider/color/style edit THAT line instead of just defining the next insert.
+function syncDividerControlsToLine(input) {
+  const info = dividerInfo(input.value);
+  if (info) {
+    editingDivider = input;
+    dividerColor.value = info.color;
+    dividerStyle.value = info.style;
+    dividerLen.value = info.len;
+    dividerLenLabel.textContent = info.len;
+  } else {
+    editingDivider = null;
+  }
+}
+function onDividerControlChange() {
+  dividerLenLabel.textContent = dividerLen.value;
+  if (editingDivider && linesWrap.contains(editingDivider) && dividerInfo(editingDivider.value)) {
+    editingDivider.value = currentDividerString();
+    render();
+  }
+}
+dividerLen.addEventListener('input', onDividerControlChange);
+dividerColor.addEventListener('change', onDividerControlChange);
+dividerStyle.addEventListener('change', onDividerControlChange);
+
+document.getElementById('insertDivider').onclick = () => {
+  const input = makeLine(currentDividerString());
+  editingDivider = input;
+  input.focus();
+  render();
+};
+document.getElementById('addSpacer').onclick = () => { makeLine('&r &r'); render(); };
+
+// Strip & / § codes so we can measure visible text length.
+function stripCodes(s) { return s.replace(/[&§]./g, ''); }
+document.getElementById('centerLines').onclick = () => {
+  const inputs = getLineInputs();
+  const visible = inputs.map(i => stripCodes(i.value).replace(/^ +/, ''));
+  const max = Math.max(0, ...visible.map(v => v.length));
+  inputs.forEach((input, idx) => {
+    const codePrefix = (input.value.match(/^((?:[&§].)*)/) || ['', ''])[1]; // keep leading codes
+    const body = input.value.slice(codePrefix.length).replace(/^ +/, '');
+    const pad = Math.max(0, Math.round((max - visible[idx].length) / 2));
+    input.value = codePrefix + ' '.repeat(pad) + body;
+  });
+  render();
+};
+
+// ---- renderer: parse & codes into styled spans ----
+function renderLine(str) {
+  const el = document.createElement('div');
+  el.className = 'mcline';
+  let color = '#FFFFFF';
+  let bold = false, italic = false, underline = false, strike = false, magic = false;
+  let buf = '';
+
+  function flush() {
+    if (!buf) return;
+    const span = document.createElement('span');
+    span.textContent = buf;
+    span.style.color = color;
+    span.style.fontWeight = bold ? '700' : '400';
+    span.style.fontStyle = italic ? 'italic' : 'normal';
+    const deco = [];
+    if (underline) deco.push('underline');
+    if (strike) deco.push('line-through');
+    span.style.textDecoration = deco.join(' ');
+    if (magic) { span.dataset.magic = '1'; span.dataset.len = buf.length; }
+    el.appendChild(span);
+    buf = '';
+  }
+
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if ((ch === '&' || ch === '§') && i + 1 < str.length) {
+      const code = str[i + 1].toLowerCase();
+      if (COLORS[code]) { flush(); color = COLORS[code][1]; bold=italic=underline=strike=magic=false; i++; continue; }
+      if (code === 'l') { flush(); bold = true; i++; continue; }
+      if (code === 'o') { flush(); italic = true; i++; continue; }
+      if (code === 'n') { flush(); underline = true; i++; continue; }
+      if (code === 'm') { flush(); strike = true; i++; continue; }
+      if (code === 'k') { flush(); magic = true; i++; continue; }
+      if (code === 'r') { flush(); color='#FFFFFF'; bold=italic=underline=strike=magic=false; i++; continue; }
+    }
+    buf += ch;
+  }
+  flush();
+  return el;
+}
+
+const stack = document.getElementById('previewStack');
+const stage = document.getElementById('stage');
+function render() {
+  const px = parseInt(document.getElementById('fontPx').value) || 18;
+  stack.innerHTML = '';
+  for (const input of getLineInputs()) {
+    const line = renderLine(input.value);
+    line.style.fontSize = px + 'px';
+    stack.appendChild(line);
+  }
+  updateExportPreview();
+}
+
+// ---- magic (obfuscated) animation ----
+const MAGIC_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789?!@#%&';
+setInterval(() => {
+  for (const span of stack.querySelectorAll('[data-magic]')) {
+    const len = parseInt(span.dataset.len) || span.textContent.length;
+    let s = '';
+    for (let i = 0; i < len; i++) s += MAGIC_CHARS[(Math.random() * MAGIC_CHARS.length) | 0];
+    span.textContent = s;
+  }
+}, 80);
+
+// ---- export ----
+function buildFileText() {
+  const space = document.getElementById('verticalSpace').value || '0.3';
+  const name = document.getElementById('panelName').value || 'panel';
+  const lines = getLineInputs().map(i => i.value);
+  const out = [];
+  out.push('# Hologram panel: ' + name);
+  out.push('# space: ' + space);
+  out.push('# Created with the Hologram Panel Editor');
+  out.push('');
+  for (const l of lines) out.push(l);
+  return out.join('\n') + '\n';
+}
+function updateExportPreview() {
+  document.getElementById('exportPreview').value = buildFileText();
+}
+document.getElementById('exportBtn').onclick = () => {
+  const name = (document.getElementById('panelName').value || 'panel').replace(/[^a-z0-9._-]/gi, '_');
+  const blob = new Blob([buildFileText()], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name + '.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+// ---- import ----
+document.getElementById('importBtn').onclick = () => {
+  const raw = document.getElementById('importBox').value.split('\n');
+  linesWrap.innerHTML = '';
+  for (const line of raw) {
+    const t = line.trim();
+    if (t.startsWith('# space:')) {
+      document.getElementById('verticalSpace').value = t.replace('# space:', '').trim();
+      continue;
+    }
+    if (t.startsWith('#')) continue;
+    makeLine(line);
+  }
+  if (getLineInputs().length === 0) makeLine('');
+  render();
+};
+
+// ---- background screenshot ----
+const bgImg = document.getElementById('bgImg');
+let bgCanvas = null, bgCtx = null;
+document.getElementById('bgFile').onchange = e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  bgImg.onload = () => {
+    bgCanvas = document.createElement('canvas');
+    bgCanvas.width = bgImg.naturalWidth;
+    bgCanvas.height = bgImg.naturalHeight;
+    bgCtx = bgCanvas.getContext('2d');
+    bgCtx.drawImage(bgImg, 0, 0);
+  };
+  bgImg.src = URL.createObjectURL(file);
+  bgImg.style.display = 'block';
+};
+
+// ---- eyedropper: sample a screenshot pixel -> nearest Minecraft color ----
+function hexToRgb(h) { return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+function nearestColorCode(r, g, b) {
+  let best = 'f', bestD = Infinity;
+  for (const [code, [, hex]] of Object.entries(COLORS)) {
+    const [cr, cg, cb] = hexToRgb(hex);
+    const d = (r-cr)**2 + (g-cg)**2 + (b-cb)**2;
+    if (d < bestD) { bestD = d; best = code; }
+  }
+  return best;
+}
+let eyedropper = false;
+const eyeBtn = document.getElementById('eyedropper');
+eyeBtn.onclick = () => {
+  eyedropper = !eyedropper;
+  eyeBtn.textContent = '🎯 Eyedropper: ' + (eyedropper ? 'on' : 'off');
+  stage.style.cursor = eyedropper ? 'crosshair' : '';
+  stack.style.pointerEvents = eyedropper ? 'none' : '';
+};
+stage.addEventListener('click', e => {
+  if (!eyedropper || !bgCtx) return;
+  const rect = bgImg.getBoundingClientRect();
+  if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) return;
+  const x = Math.floor((e.clientX - rect.left) / rect.width * bgImg.naturalWidth);
+  const y = Math.floor((e.clientY - rect.top) / rect.height * bgImg.naturalHeight);
+  const [r, g, b] = bgCtx.getImageData(x, y, 1, 1).data;
+  insertCode('&' + nearestColorCode(r, g, b));
+});
+document.getElementById('bgOpacity').oninput = e => bgImg.style.opacity = e.target.value / 100;
+document.getElementById('bgScale').oninput = e => bgImg.style.width = (bgImg.naturalWidth * e.target.value / 100) + 'px';
+document.getElementById('fontPx').oninput = render;
+document.getElementById('verticalSpace').oninput = updateExportPreview;
+document.getElementById('panelName').oninput = updateExportPreview;
+
+// ---- drag the preview stack to align over the screenshot ----
+(function () {
+  let dragging = false, ox = 0, oy = 0;
+  stack.style.left = '40px'; stack.style.top = '40px';
+  stack.addEventListener('mousedown', e => {
+    dragging = true;
+    ox = e.clientX - stack.offsetLeft;
+    oy = e.clientY - stack.offsetTop;
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    stack.style.left = (e.clientX - ox) + 'px';
+    stack.style.top = (e.clientY - oy) + 'px';
+  });
+  window.addEventListener('mouseup', () => dragging = false);
+})();
+
+// ---- seed with the example from the screenshot ----
+[
+  '&e&lUseful Commands',
+  '&b/rtp &7- Randomly teleport in current world.',
+  '&b/sethome <name> &7- Set a personal home teleport.',
+  '&b/home <name> &7- Teleport to your personal home.',
+  '&b/spawn &7- Teleport to spawn.',
+  '&b/warp <name> &7- Teleport to a warp.',
+  '&b/warps &7- View all available warps.',
+  '&b/vote &7- Support the server for free and receive rewards.',
+  '&b/discord &7- Join the community on Discord.',
+  '&b/store &7- Grab a shiny rank from the server store.'
+].forEach(makeLine);
+render();
+</script>
+</body>
+</html>
