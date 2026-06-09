@@ -9,9 +9,11 @@ import de.randombyte.kosp.extensions.getServiceOrFail
 import de.randombyte.kosp.extensions.green
 import de.randombyte.kosp.extensions.orNull
 import de.randombyte.kosp.extensions.red
+import org.spongepowered.api.Sponge
 import org.spongepowered.api.command.CommandResult
 import org.spongepowered.api.command.args.CommandContext
 import org.spongepowered.api.entity.living.player.Player
+import org.spongepowered.api.scheduler.Task
 import org.spongepowered.api.text.serializer.TextSerializers
 import java.nio.file.Files
 
@@ -79,11 +81,18 @@ class CreateHologramFromFileCommand(val pluginInstance: Holograms) : PlayerExecu
         }
 
         // Tag every line with the panel name so it can be updated/removed/exported later.
-        created.forEach { hologram ->
-            val stand = hologram.getArmorStand()
-            val data = stand.getOrCreate(HologramData::class.java).get().set(HologramKeys.PANEL_NAME, name)
-            stand.offer(data)
-        }
+        // The just-spawned entities aren't registered in the world until the current server
+        // phase ends, so do this a tick later instead of immediately (which would fail to find them).
+        val uuids = created.map { it.uuid }
+        val worldUuid = player.location.extent.uniqueId
+        Task.builder().delayTicks(1).execute { ->
+            val world = Sponge.getServer().getWorld(worldUuid).orElse(null) ?: return@execute
+            uuids.forEach { uuid ->
+                val entity = world.getEntity(uuid).orElse(null) ?: return@forEach
+                val data = entity.getOrCreate(HologramData::class.java).get().set(HologramKeys.PANEL_NAME, name)
+                entity.offer(data)
+            }
+        }.submit(pluginInstance)
 
         val suffix = if (replaced > 0) " (replaced previous)" else ""
         player.sendMessage("Spawned '$name' panel (${texts.size} lines)$suffix!".green())
