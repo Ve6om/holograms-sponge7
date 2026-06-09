@@ -1,25 +1,8 @@
-buildscript {
-    repositories {
-        maven {
-            url "https://plugins.gradle.org/m2"
-        }
-    }
-    dependencies {
-        classpath "gradle.plugin.flavor.pie:promptsign:1.0.2"
-    }
-}
-
 plugins {
     id "maven"
     id "org.jetbrains.kotlin.jvm" version "1.2.50"
     id "org.jetbrains.kotlin.kapt" version "1.2.50"
     id "com.github.johnrengelman.shadow" version "2.0.4"
-}
-
-def isJitpack = System.getenv("JITPACK") != null
-
-if (!isJitpack) {
-    apply plugin: "flavor.pie.promptsign"
 }
 
 group "de.randombyte"
@@ -28,13 +11,13 @@ version "3.2.0"
 allprojects {
     repositories {
         jcenter()
-        maven { url "https://repo.spongepowered.org/maven/" }
+        maven { url "https://repo.spongepowered.org/repository/maven-public/" }
         maven { url "https://jitpack.io" }
         maven { url "https://repo.codemc.org/repository/maven-public" }
     }
 }
 
-ext.spongeApiVersion = "7.0.0"
+ext.spongeApiVersion = "7.4.0"
 
 configurations {
     compile.extendsFrom kapt
@@ -61,9 +44,6 @@ shadowJar {
 }
 build.dependsOn shadowJar
 install.dependsOn shadowJar
-if (!isJitpack) {
-    signArchives.dependsOn shadowJar
-}
 
 compileKotlin {
     kotlinOptions {

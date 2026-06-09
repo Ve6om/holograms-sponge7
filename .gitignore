@@ -5,3 +5,4 @@ run/
 holograms\.iml
 *.class
 out/production/classes/META-INF/
+/local-panels/
