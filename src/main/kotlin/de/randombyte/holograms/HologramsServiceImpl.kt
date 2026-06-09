@@ -21,11 +21,10 @@ class HologramsServiceImpl : HologramsService {
 
     class HologramImpl internal constructor(uuid: UUID, worldUuid: UUID) : Hologram(uuid, worldUuid) {
 
-        init {
-            // Check for existence by trying to get the ArmorStand
-            // If it can't be found a detailed exception is thrown
-            getArmorStand()
-        }
+        // Note: existence is intentionally NOT verified here. On newer Sponge builds an entity
+        // spawned during the current server phase isn't registered in the world until that phase
+        // ends, so an eager lookup right after spawning would fail. Use exists() / getArmorStand()
+        // when the entity is actually needed (a tick later), which handles a missing entity itself.
 
         override var location: Location<World>
             get() = getArmorStand().location
