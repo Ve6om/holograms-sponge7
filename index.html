@@ -136,7 +136,7 @@
 
     <h2>Panel</h2>
     <label>Panel name (export filename)</label>
-    <input type="text" id="panelName" value="useful-commands">
+    <input type="text" id="panelName" value="welcome-example">
     <div class="spacer"></div>
     <div class="row">
       <div>
@@ -197,7 +197,7 @@
 
     <h2>Import / Export</h2>
     <label>Paste &-code lines to import</label>
-    <textarea id="importBox" placeholder="&6&lUseful Commands&#10;&b/rtp &7- Randomly teleport..."></textarea>
+    <textarea id="importBox" placeholder="&a&lWelcome to the Server!&#10;&a» Type /help for commands."></textarea>
     <div class="row">
       <button class="small" id="importBtn">Load into editor</button>
     </div>
@@ -556,18 +556,13 @@ document.getElementById('panelName').oninput = updateExportPreview;
   window.addEventListener('mouseup', () => dragging = false);
 })();
 
-// ---- seed with the example from the screenshot ----
+// ---- seed with a small generic example ----
 [
-  '&e&lUseful Commands',
-  '&b/rtp &7- Randomly teleport in current world.',
-  '&b/sethome <name> &7- Set a personal home teleport.',
-  '&b/home <name> &7- Teleport to your personal home.',
-  '&b/spawn &7- Teleport to spawn.',
-  '&b/warp <name> &7- Teleport to a warp.',
-  '&b/warps &7- View all available warps.',
-  '&b/vote &7- Support the server for free and receive rewards.',
-  '&b/discord &7- Join the community on Discord.',
-  '&b/store &7- Grab a shiny rank from the server store.'
+  '&a&m                              &r',
+  '&a&lWelcome to the Server!',
+  '&a» Enjoy your stay and have fun.',
+  '&a» Type /help for a list of commands.',
+  '&a&m                              &r'
 ].forEach(makeLine);
 render();
 </script>
